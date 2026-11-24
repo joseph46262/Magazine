@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>جرد المخزون — مسح تراكمي بالكاميرا</title>
+  <style>
+    :root {
+      --bg: #f3f5f7;
+      --card: #ffffff;
+      --text: #16202a;
+      --muted: #64748b;
+      --primary: #0f8a5f;
+      --primary-dark: #0a6847;
+      --primary-soft: #e6f5ef;
+      --border: #e2e8f0;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 40px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .badge {
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .scan-box {
+      display: flex;
+      gap: 8px;
+    }
+
+    .scan-box input {
+      flex: 1;
+      min-width: 0;
+      height: 46px;
+      padding: 0 12px;
+      font-size: 0.95rem;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      outline: none;
+      background: #f8fafc;
+    }
+
+    .scan-box input:focus {
+      border-color: var(--primary);
+      background: #fff;
+    }
+
+    .btn-add {
+      height: 46px;
+      padding: 0 14px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-camera {
+      height: 46px;
+      padding: 0 14px;
+      border: 1.5px solid var(--primary);
+      border-radius: 12px;
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-add:active,
+    .btn-camera:active {
+      transform: scale(0.97);
+    }
+
+    .quick-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 16px 2px;
+      scrollbar-width: none;
+    }
+
+    .quick-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .chip:active {
+      background: var(--primary-soft);
+      border-color: var(--primary);
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px 6px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .btn-reset {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 6px;
+    }
+
+    .list {
+      padding: 6px 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 36px 16px;
+      color: var(--muted);
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px dashed var(--border);
+      font-size: 0.92rem;
+    }
+
+    .item-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: var(--shadow);
+      transition: background-color 0.35s ease, border-color 0.35s ease;
+    }
+
+    .item-card.flash {
+      background: var(--primary-soft);
+      border-color: var(--primary);
+    }
+
+    .item-info {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .item-name {
+      font-size: 0.98rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+
+    .item-code {
+      font-size: 0.8rem;
+      color: var(--muted);
+      direction: ltr;
+      text-align: right;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .qty-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 9px 12px;
+      cursor: pointer;
+      min-width: 78px;
+      justify-content: center;
+    }
+
+    .qty-btn:active {
+      transform: scale(0.97);
+    }
+
+    .qty-num {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .qty-edit-icon {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .del-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #fecaca;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 1.05rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .del-btn:active {
+      transform: scale(0.95);
+      background: #fee2e2;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e293b;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 0.86rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 60;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* النوافذ المنبثقة (التعديل / الحذف / الكاميرا) */
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 40;
+    }
+
+    .backdrop.open {
+      display: flex;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 520px;
+      background: var(--card);
+      border-radius: 20px 20px 0 0;
+      padding: 20px 18px 26px;
+      box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.2);
+    }
+
+    @media (min-width: 600px) {
+      .backdrop {
+        align-items: center;
+        padding: 16px;
+      }
+      .sheet {
+        border-radius: 20px;
+      }
+    }
+
+    .sheet-title {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .confirm-notice {
+      background: #fff8e7;
+      border: 1px solid #f5d08a;
+      color: #7c4a03;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.86rem;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .danger-notice {
+      background: var(--danger-soft);
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .sheet-meta {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .step-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: #f8fafc;
+      font-size: 1.4rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .stepper input {
+      flex: 1;
+      height: 48px;
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      border: 1.5px solid var(--primary);
+      border-radius: 12px;
+      outline: none;
+    }
+
+    .sheet-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-cancel {
+      flex: 1;
+      height: 46px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-confirm {
+      flex: 1.4;
+      height: 46px;
+      border-radius: 12px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-danger-confirm {
+      flex: 1.4;
+      height: 46px;
+      border-radius: 12px;
+      border: none;
+      background: var(--danger);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* منطقة كاميرا المسح */
+    .camera-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: #0f172a;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .camera-wrapper video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .scan-frame {
+      position: absolute;
+      inset: 22% 14%;
+      border: 2.5px solid #22c55e;
+      border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+    }
+
+    .camera-status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 14px;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <h1>جرد المخزون</h1>
+      <span class="badge">مسح تراكمي (+1)</span>
+    </div>
+    <form class="scan-box" id="scanForm">
+      <input
+        type="text"
+        id="barcodeInput"
+        placeholder="اكتب الباركود أو امسحه..."
+        autocomplete="off"
+        enterkeyhint="done"
+      />
+      <button type="submit" class="btn-add">+ إضافة</button>
+      <button type="button" class="btn-camera" id="openCameraBtn" title="مسح بالكاميرا">
+        <span>📷</span>
+        <span>Scan</span>
+      </button>
+    </form>
+  </header>
+
+  <div class="quick-bar" aria-label="تجربة سريعة">
+    <button type="button" class="chip" data-code="1001">تجربة: كرتون عبوات (1001)</button>
+    <button type="button" class="chip" data-code="1002">تجربة: رول تغليف (1002)</button>
+    <button type="button" class="chip" data-code="1003">تجربة: ملصق باركود (1003)</button>
+  </div>
+
+  <div class="summary">
+    <span id="summaryText">إجمالي القطع: 0</span>
+    <button type="button" class="btn-reset" id="resetBtn">تصفير الكميات</button>
+  </div>
+
+  <main class="list" id="itemsList"></main>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 1. نافذة تأكيد التعديل اليدوي -->
+  <div class="backdrop" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="sheet">
+      <h2 class="sheet-title" id="editTitle">تأكيد تعديل الكمية</h2>
+      <div class="confirm-notice">
+        <strong>تنبيه:</strong> أنت على وشك تعديل كمية هذا الصنف يدوياً. تأكد من رغبتك في تغيير العدد قبل الحفظ.
+      </div>
+      <div class="sheet-meta" id="editMeta"></div>
+      <div class="stepper">
+        <button type="button" class="step-btn" id="decBtn">−</button>
+        <input type="number" id="newQtyInput" inputmode="numeric" min="0" step="1" />
+        <button type="button" class="step-btn" id="incBtn">+</button>
+      </div>
+      <div class="sheet-actions">
+        <button type="button" class="btn-cancel" id="cancelEditBtn">إلغاء</button>
+        <button type="button" class="btn-confirm" id="confirmEditBtn">تأكيد التعديل</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. نافذة تأكيد حذف الصنف -->
+  <div class="backdrop" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+    <div class="sheet">
+      <h2 class="sheet-title" id="deleteTitle">تأكيد حذف الصنف</h2>
+      <div class="danger-notice" id="deleteMessage"></div>
+      <div class="sheet-actions">
+        <button type="button" class="btn-cancel" id="cancelDeleteBtn">إلغاء</button>
+        <button type="button" class="btn-danger-confirm" id="confirmDeleteBtn">نعم، احذف الصنف</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. نافذة ماسح الكاميرا (Scan) -->
+  <div class="backdrop" id="cameraModal" role="dialog" aria-modal="true" aria-labelledby="cameraTitle">
+    <div class="sheet">
+      <h2 class="sheet-title" id="cameraTitle">مسح الباركود بالكاميرا (تراكمي +1)</h2>
+      <div class="camera-wrapper">
+        <video id="cameraVideo" playsinline muted></video>
+        <div class="scan-frame"></div>
+      </div>
+      <div class="camera-status" id="cameraStatus">
+        وجّه الكاميرا نحو الباركود أو رمز QR ليتم المسح تلقائياً...
+      </div>
+      <div class="sheet-actions">
+        <button type="button" class="btn-cancel" id="closeCameraBtn">إغلاق الكاميرا</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "mobile_inventory_items_v2";
+
+    const defaultItems = [
+      { code: "1001", name: "كرتون عبوات قياسي", qty: 0 },
+      { code: "1002", name: "رول تغليف شفاف", qty: 0 },
+      { code: "1003", name: "ملصق باركود حراري", qty: 0 },
+      { code: "1004", name: "شريط لاصق صناعي", qty: 0 }
+    ];
+
+    let items = loadItems();
+    let editingCode = null;
+    let deletingCode = null;
+
+    // متغيرات الكاميرا
+    let mediaStream = null;
+    let scanTimer = null;
+    let lastScannedCode = "";
+    let lastScannedAt = 0;
+
+    const itemsListEl = document.getElementById("itemsList");
+    const scanForm = document.getElementById("scanForm");
+    const barcodeInput = document.getElementById("barcodeInput");
+    const summaryText = document.getElementById("summaryText");
+    const resetBtn = document.getElementById("resetBtn");
+    const toastEl = document.getElementById("toast");
+
+    // عناصر التعديل
+    const editModal = document.getElementById("editModal");
+    const editMeta = document.getElementById("editMeta");
+    const newQtyInput = document.getElementById("newQtyInput");
+    const decBtn = document.getElementById("decBtn");
+    const incBtn = document.getElementById("incBtn");
+    const cancelEditBtn = document.getElementById("cancelEditBtn");
+    const confirmEditBtn = document.getElementById("confirmEditBtn");
+
+    // عناصر الحذف
+    const deleteModal = document.getElementById("deleteModal");
+    const deleteMessage = document.getElementById("deleteMessage");
+    const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+
+    // عناصر الكاميرا
+    const openCameraBtn = document.getElementById("openCameraBtn");
+    const cameraModal = document.getElementById("cameraModal");
+    const cameraVideo = document.getElementById("cameraVideo");
+    const cameraStatus = document.getElementById("cameraStatus");
+    const closeCameraBtn = document.getElementById("closeCameraBtn");
+
+    function loadItems() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [...defaultItems];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [...defaultItems];
+      } catch {
+        return [...defaultItems];
+      }
+    }
+
+    function saveItems() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch {}
+    }
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => toastEl.classList.remove("show"), 2000);
+    }
+
+    function beepFeedback() {
+      try {
+        if (navigator.vibrate) navigator.vibrate(60);
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        gain.gain.value = 0.08;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        setTimeout(() => {
+          osc.stop();
+          ctx.close();
+        }, 90);
+      } catch {}
+    }
+
+    function render(flashCode = null) {
+      itemsListEl.innerHTML = "";
+      let totalQty = 0;
+
+      if (items.length === 0) {
+        itemsListEl.innerHTML = `<div class="empty-state">لا توجد أصناف حالياً. امسح باركود أو أضف صنفاً جديداً للبدء.</div>`;
+      } else {
+        items.forEach((item) => {
+          totalQty += Number(item.qty) || 0;
+
+          const card = document.createElement("div");
+          card.className = "item-card" + (item.code === flashCode ? " flash" : "");
+
+          const info = document.createElement("div");
+          info.className = "item-info";
+
+          const nameEl = document.createElement("div");
+          nameEl.className = "item-name";
+          nameEl.textContent = item.name;
+
+          const codeEl = document.createElement("div");
+          codeEl.className = "item-code";
+          codeEl.textContent = `الكود: ${item.code}`;
+
+          info.append(nameEl, codeEl);
+
+          const actions = document.createElement("div");
+          actions.className = "card-actions";
+
+          const qtyBtn = document.createElement("button");
+          qtyBtn.type = "button";
+          qtyBtn.className = "qty-btn";
+          qtyBtn.title = "تعديل الكمية يدوياً";
+          qtyBtn.innerHTML = `<span class="qty-num">${item.qty}</span><span class="qty-edit-icon">✎</span>`;
+          qtyBtn.addEventListener("click", () => openEditModal(item.code));
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "del-btn";
+          delBtn.title = "حذف الصنف";
+          delBtn.setAttribute("aria-label", `حذف ${item.name}`);
+          delBtn.textContent = "🗑";
+          delBtn.addEventListener("click", () => openDeleteModal(item.code));
+
+          actions.append(qtyBtn, delBtn);
+          card.append(info, actions);
+          itemsListEl.appendChild(card);
+
+          if (item.code === flashCode) {
+            setTimeout(() => card.classList.remove("flash"), 450);
+          }
+        });
+      }
+
+      summaryText.textContent = `إجمالي القطع: ${totalQty} | عدد الأصناف: ${items.length}`;
+    }
+
+    function addScan(rawCode) {
+      const code = String(rawCode || "").trim();
+      if (!code) return;
+
+      let item = items.find((i) => i.code === code);
+      if (!item) {
+        item = { code, name: `صنف جديد (${code})`, qty: 0 };
+        items.unshift(item);
+      }
+
+      item.qty = (Number(item.qty) || 0) + 1;
+      saveItems();
+      render(code);
+      beepFeedback();
+      showToast(`تمت إضافة (+1) — ${item.name}: ${item.qty}`);
+    }
+
+    /* --- منطق التعديل اليدوي --- */
+    function openEditModal(code) {
+      const item = items.find((i) => i.code === code);
+      if (!item) return;
+
+      editingCode = code;
+      editMeta.textContent = `الصنف: ${item.name} (${item.code}) — الكمية الحالية: ${item.qty}`;
+      newQtyInput.value = item.qty;
+      editModal.classList.add("open");
+      setTimeout(() => {
+        newQtyInput.focus();
+        newQtyInput.select();
+      }, 60);
+    }
+
+    function closeEditModal() {
+      editingCode = null;
+      editModal.classList.remove("open");
+    }
+
+    decBtn.addEventListener("click", () => {
+      const current = parseInt(newQtyInput.value, 10) || 0;
+      newQtyInput.value = Math.max(0, current - 1);
+    });
+
+    incBtn.addEventListener("click", () => {
+      const current = parseInt(newQtyInput.value, 10) || 0;
+      newQtyInput.value = current + 1;
+    });
+
+    cancelEditBtn.addEventListener("click", closeEditModal);
+    editModal.addEventListener("click", (e) => {
+      if (e.target === editModal) closeEditModal();
+    });
+
+    confirmEditBtn.addEventListener("click", () => {
+      if (!editingCode) return;
+      const item = items.find((i) => i.code === editingCode);
+      const parsed = parseInt(newQtyInput.value, 10);
+
+      if (!item || Number.isNaN(parsed) || parsed < 0) {
+        showToast("أدخل رقماً صحيحاً (0 أو أكثر)");
+        return;
+      }
+
+      item.qty = parsed;
+      saveItems();
+      const updatedCode = item.code;
+      closeEditModal();
+      render(updatedCode);
+      showToast(`تم تأكيد التعديل: ${item.qty}`);
+    });
+
+    /* --- منطق حذف الصنف --- */
+    function openDeleteModal(code) {
+      const item = items.find((i) => i.code === code);
+      if (!item) return;
+
+      deletingCode = code;
+      deleteMessage.innerHTML = `هل أنت متأكد من حذف الصنف <strong>«${item.name}»</strong> (كود: ${item.code} | الكمية: ${item.qty}) نهائياً من القائمة؟`;
+      deleteModal.classList.add("open");
+    }
+
+    function closeDeleteModal() {
+      deletingCode = null;
+      deleteModal.classList.remove("open");
+    }
+
+    cancelDeleteBtn.addEventListener("click", closeDeleteModal);
+    deleteModal.addEventListener("click", (e) => {
+      if (e.target === deleteModal) closeDeleteModal();
+    });
+
+    confirmDeleteBtn.addEventListener("click", () => {
+      if (!deletingCode) return;
+      const target = items.find((i) => i.code === deletingCode);
+      items = items.filter((i) => i.code !== deletingCode);
+      saveItems();
+      closeDeleteModal();
+      render();
+      if (target) showToast(`تم حذف الصنف: ${target.name}`);
+    });
+
+    /* --- منطق الكاميرا (Scan) --- */
+    async function startCameraScan() {
+      cameraModal.classList.add("open");
+      cameraStatus.textContent = "جاري تشغيل الكاميرا الخلفية...";
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        cameraStatus.textContent =
+          "المتصفح يمنع الكاميرا في وضع الملفات المحلي (file://). ارفع الصفحة على رابط HTTPS أو استضافة مجانية لتعمل الكاميرا.";
+        return;
+      }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        cameraVideo.srcObject = mediaStream;
+        await cameraVideo.play();
+
+        if (!("BarcodeDetector" in window)) {
+          cameraStatus.textContent =
+            "الكاميرا تعمل، لكن هذا المتصفح لا يدعم قراءة الباركود التلقائية. استخدم Chrome على أندرويد أو أضف مكتبة html5-qrcode.";
+          return;
+        }
+
+        const detector = new BarcodeDetector({
+          formats: ["ean_13", "ean_8", "code_128", "code_39", "qr_code", "upc_a", "upc_e"]
+        });
+
+        cameraStatus.textContent = "وجّه الكاميرا نحو الباركود... (يضيف +1 تلقائياً مع كل مسحة)";
+
+        scanTimer = setInterval(async () => {
+          if (cameraVideo.readyState < 2) return;
+          try {
+            const barcodes = await detector.detect(cameraVideo);
+            if (barcodes && barcodes.length > 0) {
+              const code = (barcodes[0].rawValue || "").trim();
+              const now = Date.now();
+              // منع تكرار نفس الباركود خلال 1.4 ثانية بالخطأ
+              if (code && (code !== lastScannedCode || now - lastScannedAt > 1400)) {
+                lastScannedCode = code;
+                lastScannedAt = now;
+                addScan(code);
+                cameraStatus.textContent = `تم مسح: ${code} (+1) — جاهز للقطعة التالية...`;
+              }
+            }
+          } catch {}
+        }, 250);
+      } catch (err) {
+        cameraStatus.textContent =
+          "تعذر الوصول للكاميرا. تأكد من منح إذن الكاميرا للمتصفح وفتح الصفحة عبر HTTPS.";
+      }
+    }
+
+    function stopCameraScan() {
+      clearInterval(scanTimer);
+      scanTimer = null;
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        mediaStream = null;
+      }
+      cameraVideo.srcObject = null;
+      cameraModal.classList.remove("open");
+    }
+
+    openCameraBtn.addEventListener("click", startCameraScan);
+    closeCameraBtn.addEventListener("click", stopCameraScan);
+    cameraModal.addEventListener("click", (e) => {
+      if (e.target === cameraModal) stopCameraScan();
+    });
+
+    /* --- الأحداث العامة --- */
+    scanForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      addScan(barcodeInput.value);
+      barcodeInput.value = "";
+      barcodeInput.focus();
+    });
+
+    document.querySelectorAll(".chip").forEach((btn) => {
+      btn.addEventListener("click", () => addScan(btn.dataset.code));
+    });
+
+    resetBtn.addEventListener("click", () => {
+      items = items.map((i) => ({ ...i, qty: 0 }));
+      saveItems();
+      render();
+      showToast("تم تصفير جميع الكميات");
+    });
+
+    render();
+  </script>
+</body>
+</html>
